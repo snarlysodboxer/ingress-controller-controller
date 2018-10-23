@@ -42,27 +42,28 @@ func TestGetAnnotatedServices(t *testing.T) {
 	}
 }
 
-func TestNewIngressList(t *testing.T) {
-	serviceList := newServiceList()
-	annotatedList := GetAnnotatedServices(serviceList)
-	err, result := NewIngressList(annotatedList)
-	if err != nil {
-		t.Errorf("Error getting ingress list: %v\n", err)
-	}
-	expected := expectedIngressList()
-	if !reflect.DeepEqual(expected, result) {
-		t.Errorf("Expected:\n%v\nGot:\n%v\n", expected, result)
-	}
-}
-
 func TestBuildConfigs(t *testing.T) {
 	serviceList := newServiceList()
 	annotatedList := GetAnnotatedServices(serviceList)
 	err, result := buildConfigs(annotatedList)
 	if err != nil {
-		t.Errorf("Error building configs: %v", err)
+		t.Errorf("Error building ingress configs: %v\n", err)
 	}
 	expected := expectedIngressConfigs()
+	if !reflect.DeepEqual(expected, result) {
+		t.Errorf("Expected:\n%v\nGot:\n%v\n", expected, result)
+	}
+}
+
+func TestNewIngressList(t *testing.T) {
+	serviceList := newServiceList()
+	annotatedList := GetAnnotatedServices(serviceList)
+	err, configs := buildConfigs(annotatedList)
+	if err != nil {
+		t.Errorf("Error building ingress configs: %v\n", err)
+	}
+	result := NewIngressList(configs)
+	expected := expectedIngressList()
 	if !reflect.DeepEqual(expected, result) {
 		t.Errorf("Expected:\n%v\nGot:\n%v\n", expected, result)
 	}

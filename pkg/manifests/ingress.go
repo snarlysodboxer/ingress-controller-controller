@@ -111,13 +111,7 @@ func buildConfigs(sl corev1.ServiceList) (error, []ingressConfig) {
 }
 
 // NewIngressList expects all services passed to be annotated
-func NewIngressList(sl corev1.ServiceList) (error, v1beta1.IngressList) {
-	// TODO
-
-	err, configs := buildConfigs(sl)
-	if err != nil {
-		return err, v1beta1.IngressList{}
-	}
+func NewIngressList(configs []ingressConfig) v1beta1.IngressList {
 	ingresses := []v1beta1.Ingress{}
 	for _, config := range configs {
 		rules := []v1beta1.IngressRule{}
@@ -129,7 +123,7 @@ func NewIngressList(sl corev1.ServiceList) (error, v1beta1.IngressList) {
 		ingresses = append(ingresses, ingress)
 	}
 
-	return nil, v1beta1.IngressList{
+	return v1beta1.IngressList{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "IngressList",
 			APIVersion: "extensions/v1beta1",
