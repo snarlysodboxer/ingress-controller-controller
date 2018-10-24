@@ -55,6 +55,7 @@ func GetAllServices() (error, corev1.ServiceList) {
 	return nil, serviceList
 }
 
+// Find the `Service`s that have the right annotation
 func GetAnnotatedServices(sl corev1.ServiceList) corev1.ServiceList {
 	serviceList := corev1.ServiceList{
 		TypeMeta: metav1.TypeMeta{
@@ -71,7 +72,87 @@ func GetAnnotatedServices(sl corev1.ServiceList) corev1.ServiceList {
 	return serviceList
 }
 
-func buildConfigs(sl corev1.ServiceList) (error, []ingressConfig) {
+// NewIngressList calculates a list of `Ingress`s from the annotations
+func NewIngressList(configs []ingressConfig) v1beta1.IngressList {
+	ingresses := []v1beta1.Ingress{}
+	for _, config := range configs {
+		rules := []v1beta1.IngressRule{}
+		for _, hostConfig := range config.HostConfigs {
+			rule := newRule(hostConfig)
+			rules = append(rules, rule)
+		}
+		ingress := newIngress(config.Name, rules)
+		ingresses = append(ingresses, ingress)
+	}
+
+	return v1beta1.IngressList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "IngressList",
+			APIVersion: "extensions/v1beta1",
+		},
+		Items: ingresses,
+	}
+}
+
+// List all `Ingress` objects
+func GetAllIngresses() (error, v1beta1.IngressList) {
+	ingressList := v1beta1.IngressList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "IngressList",
+			APIVersion: "core/v1",
+		},
+	}
+	err := sdk.List("default", &ingressList) // TODO set the namespace via config
+	if err != nil {
+		logrus.Errorf("Failed to query Ingresses : %v", err)
+		return err, v1beta1.IngressList{}
+	}
+
+	return nil, ingressList
+}
+
+func GetAnnotatedIngresses(sl v1beta1.IngressList) v1beta1.IngressList {
+	ingressList := v1beta1.IngressList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "IngressList",
+			APIVersion: "extensions/v1beta1",
+		},
+	}
+	for _, ingress := range sl.Items {
+		if ingress.ObjectMeta.Annotations[ingressAnnotationKey] == "true" {
+			ingressList.Items = append(ingressList.Items, ingress)
+		}
+	}
+
+	return ingressList
+}
+
+func GetOrphanedIngresses(desired, observed v1beta1.IngressList) v1beta1.IngressList {
+	orphaned := v1beta1.IngressList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "IngressList",
+			APIVersion: "extensions/v1beta1",
+		},
+	}
+	for _, desiredItem := range desired.Items {
+		found := false
+		item := v1beta1.Ingress{}
+		for _, observedItem := range observed.Items {
+			if desiredItem.Name == observedItem.Name {
+				found = true
+				item = observedItem
+			}
+		}
+		if !found {
+			orphaned.Items = append(orphaned.Items, item)
+		}
+	}
+
+	return orphaned
+}
+
+//   expects all services passed to be annotated
+func BuildConfigs(sl corev1.ServiceList) (error, []ingressConfig) {
 	nameMap := map[string][]yamlConfig{}
 	for _, service := range sl.Items {
 		yc := yamlConfig{}
@@ -108,28 +189,6 @@ func buildConfigs(sl corev1.ServiceList) (error, []ingressConfig) {
 	}
 
 	return nil, configs
-}
-
-// NewIngressList expects all services passed to be annotated
-func NewIngressList(configs []ingressConfig) v1beta1.IngressList {
-	ingresses := []v1beta1.Ingress{}
-	for _, config := range configs {
-		rules := []v1beta1.IngressRule{}
-		for _, hostConfig := range config.HostConfigs {
-			rule := newRule(hostConfig)
-			rules = append(rules, rule)
-		}
-		ingress := newIngress(config.Name, rules)
-		ingresses = append(ingresses, ingress)
-	}
-
-	return v1beta1.IngressList{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "IngressList",
-			APIVersion: "extensions/v1beta1",
-		},
-		Items: ingresses,
-	}
 }
 
 func newIngress(name string, rules []v1beta1.IngressRule) v1beta1.Ingress {

@@ -45,7 +45,7 @@ func TestGetAnnotatedServices(t *testing.T) {
 func TestBuildConfigs(t *testing.T) {
 	serviceList := newServiceList()
 	annotatedList := GetAnnotatedServices(serviceList)
-	err, result := buildConfigs(annotatedList)
+	err, result := BuildConfigs(annotatedList)
 	if err != nil {
 		t.Errorf("Error building ingress configs: %v\n", err)
 	}
@@ -58,11 +58,20 @@ func TestBuildConfigs(t *testing.T) {
 func TestNewIngressList(t *testing.T) {
 	serviceList := newServiceList()
 	annotatedList := GetAnnotatedServices(serviceList)
-	err, configs := buildConfigs(annotatedList)
+	err, configs := BuildConfigs(annotatedList)
 	if err != nil {
 		t.Errorf("Error building ingress configs: %v\n", err)
 	}
 	result := NewIngressList(configs)
+	expected := expectedIngressList()
+	if !reflect.DeepEqual(expected, result) {
+		t.Errorf("Expected:\n%v\nGot:\n%v\n", expected, result)
+	}
+}
+
+func TestGetAnnotatedIngresses(t *testing.T) {
+	ingressList := newIngressList()
+	result := GetAnnotatedIngresses(ingressList)
 	expected := expectedIngressList()
 	if !reflect.DeepEqual(expected, result) {
 		t.Errorf("Expected:\n%v\nGot:\n%v\n", expected, result)
@@ -414,6 +423,137 @@ func expectedIngressList() v1beta1.IngressList {
 											Path: "/fdsa",
 											Backend: v1beta1.IngressBackend{
 												ServiceName: "web2",
+												ServicePort: servicePort,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func newIngressList() v1beta1.IngressList {
+	servicePort := intstr.FromInt(80)
+	return v1beta1.IngressList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "IngressList",
+			APIVersion: "extensions/v1beta1",
+		},
+		Items: []v1beta1.Ingress{
+			{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Ingress",
+					APIVersion: "extensions/v1beta1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "production",
+					Namespace: "default",
+					Annotations: map[string]string{
+						ingressAnnotationKey: "true",
+					},
+				},
+				Spec: v1beta1.IngressSpec{
+					Rules: []v1beta1.IngressRule{
+						{
+							Host: "this.example.com",
+							IngressRuleValue: v1beta1.IngressRuleValue{
+								HTTP: &v1beta1.HTTPIngressRuleValue{
+									Paths: []v1beta1.HTTPIngressPath{
+										{
+											Path: "/*",
+											Backend: v1beta1.IngressBackend{
+												ServiceName: "web",
+												ServicePort: servicePort,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Ingress",
+					APIVersion: "extensions/v1beta1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "staging",
+					Namespace: "default",
+					Annotations: map[string]string{
+						ingressAnnotationKey: "true",
+					},
+				},
+				Spec: v1beta1.IngressSpec{
+					Rules: []v1beta1.IngressRule{
+						{
+							Host: "that.example.com",
+							IngressRuleValue: v1beta1.IngressRuleValue{
+								HTTP: &v1beta1.HTTPIngressRuleValue{
+									Paths: []v1beta1.HTTPIngressPath{
+										{
+											Path: "/that",
+											Backend: v1beta1.IngressBackend{
+												ServiceName: "web",
+												ServicePort: servicePort,
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							Host: "other.example.com",
+							IngressRuleValue: v1beta1.IngressRuleValue{
+								HTTP: &v1beta1.HTTPIngressRuleValue{
+									Paths: []v1beta1.HTTPIngressPath{
+										{
+											Path: "/asdf",
+											Backend: v1beta1.IngressBackend{
+												ServiceName: "web",
+												ServicePort: servicePort,
+											},
+										},
+										{
+											Path: "/fdsa",
+											Backend: v1beta1.IngressBackend{
+												ServiceName: "web2",
+												ServicePort: servicePort,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Ingress",
+					APIVersion: "extensions/v1beta1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "some-other",
+					Namespace: "default",
+				},
+				Spec: v1beta1.IngressSpec{
+					Rules: []v1beta1.IngressRule{
+						{
+							Host: "nope.example.com",
+							IngressRuleValue: v1beta1.IngressRuleValue{
+								HTTP: &v1beta1.HTTPIngressRuleValue{
+									Paths: []v1beta1.HTTPIngressPath{
+										{
+											Path: "/*",
+											Backend: v1beta1.IngressBackend{
+												ServiceName: "web",
 												ServicePort: servicePort,
 											},
 										},
