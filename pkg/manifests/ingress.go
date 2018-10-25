@@ -42,8 +42,8 @@ type pathConfig struct {
 func GetAllServices() (error, corev1.ServiceList) {
 	serviceList := corev1.ServiceList{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "ServiceList",
-			APIVersion: "core/v1",
+			Kind:       "Service",
+			APIVersion: "v1",
 		},
 	}
 	err := sdk.List("default", &serviceList) // TODO set the namespace via config
@@ -59,8 +59,8 @@ func GetAllServices() (error, corev1.ServiceList) {
 func GetAnnotatedServices(sl corev1.ServiceList) corev1.ServiceList {
 	serviceList := corev1.ServiceList{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "ServiceList",
-			APIVersion: "core/v1",
+			Kind:       "Service",
+			APIVersion: "v1",
 		},
 	}
 	for _, service := range sl.Items {
@@ -87,7 +87,7 @@ func NewIngressList(configs []ingressConfig) v1beta1.IngressList {
 
 	return v1beta1.IngressList{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "IngressList",
+			Kind:       "Ingress",
 			APIVersion: "extensions/v1beta1",
 		},
 		Items: ingresses,
@@ -98,8 +98,8 @@ func NewIngressList(configs []ingressConfig) v1beta1.IngressList {
 func GetAllIngresses() (error, v1beta1.IngressList) {
 	ingressList := v1beta1.IngressList{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "IngressList",
-			APIVersion: "core/v1",
+			Kind:       "Ingress",
+			APIVersion: "extensions/v1beta1",
 		},
 	}
 	err := sdk.List("default", &ingressList) // TODO set the namespace via config
@@ -114,7 +114,7 @@ func GetAllIngresses() (error, v1beta1.IngressList) {
 func GetAnnotatedIngresses(sl v1beta1.IngressList) v1beta1.IngressList {
 	ingressList := v1beta1.IngressList{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "IngressList",
+			Kind:       "Ingress",
 			APIVersion: "extensions/v1beta1",
 		},
 	}
@@ -130,21 +130,19 @@ func GetAnnotatedIngresses(sl v1beta1.IngressList) v1beta1.IngressList {
 func GetOrphanedIngresses(desired, observed v1beta1.IngressList) v1beta1.IngressList {
 	orphaned := v1beta1.IngressList{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "IngressList",
+			Kind:       "Ingress",
 			APIVersion: "extensions/v1beta1",
 		},
 	}
-	for _, desiredItem := range desired.Items {
+	for _, observedItem := range observed.Items {
 		found := false
-		item := v1beta1.Ingress{}
-		for _, observedItem := range observed.Items {
-			if desiredItem.Name == observedItem.Name {
+		for _, desiredItem := range desired.Items {
+			if desiredItem.ObjectMeta.Name == observedItem.ObjectMeta.Name {
 				found = true
-				item = observedItem
 			}
 		}
 		if !found {
-			orphaned.Items = append(orphaned.Items, item)
+			orphaned.Items = append(orphaned.Items, observedItem)
 		}
 	}
 

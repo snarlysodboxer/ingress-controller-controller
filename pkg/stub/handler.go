@@ -9,7 +9,7 @@ import (
 	"github.com/operator-framework/operator-sdk/pkg/util/k8sutil"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
-	// corev1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 )
 
@@ -31,47 +31,52 @@ type Handler struct {
 }
 
 func (handler *Handler) Handle(ctx context.Context, event sdk.Event) error {
-	if event.Deleted {
-		return nil
+	switch object := event.Object.(type) {
+	case *corev1.Service:
+		// TODO run all of this case at start up too
+		err, services := manifests.GetAllServices()
+		if err != nil {
+			logrus.Errorf("Error listing Services: %v", err)
+			return err
+		}
+
+		annotatedServices := manifests.GetAnnotatedServices(services)
+
+		err, configs := manifests.BuildConfigs(annotatedServices)
+		if err != nil {
+			logrus.Errorf("Error building ingress configs: %v\n", err)
+			return err
+		}
+
+		calculatedIngresses := manifests.NewIngressList(configs)
+
+		err, ingresses := manifests.GetAllIngresses()
+		if err != nil {
+			logrus.Errorf("Error listing Ingresses: %v", err)
+			return err
+		}
+
+		annotatedIngresses := manifests.GetAnnotatedIngresses(ingresses)
+
+		orphans := manifests.GetOrphanedIngresses(calculatedIngresses, annotatedIngresses)
+		for _, orphan := range orphans.Items {
+			err = sdk.Delete(&orphan)
+			if err != nil {
+				logrus.Errorf("Error deleting Ingresses: %v", err)
+				return err
+			}
+		}
+
+		for _, ingress := range calculatedIngresses.Items {
+			err = applyObject(handler, &ingress)
+			if err != nil {
+				logrus.Errorf("Error applying Ingress: %v", err)
+				return err
+			}
+		}
+
+		logrus.Debugf("Handled event loop for Service '%s'", object.Name)
 	}
-
-	// TODO ensure the sdk doesn't need this
-	// switch object := event.Object.(type) {
-	// case *corev1.Service:
-	err, services := manifests.GetAllServices()
-	if err != nil {
-		logrus.Errorf("Error listing Services: %v", err)
-	}
-
-	annotatedServices := manifests.GetAnnotatedServices(services)
-
-	err, configs := manifests.BuildConfigs(annotatedServices)
-	if err != nil {
-		logrus.Errorf("Error building ingress configs: %v\n", err)
-	}
-
-	calculatedIngresses := manifests.NewIngressList(configs)
-
-	err, ingresses := manifests.GetAllIngresses()
-	if err != nil {
-		logrus.Errorf("Error listing Ingresses: %v", err)
-	}
-
-	annotatedIngresses := manifests.GetAnnotatedIngresses(ingresses)
-
-	orphans := manifests.GetOrphanedIngresses(calculatedIngresses, annotatedIngresses)
-	err = sdk.Delete(&orphans)
-	if err != nil {
-		logrus.Errorf("Error deleting Ingresses: %v", err)
-	}
-
-	err = applyObject(handler, &calculatedIngresses)
-	if err != nil {
-		logrus.Errorf("Error applying Ingresses: %v", err)
-	}
-
-	logrus.Debug("Handled event loop for Service")
-	// }
 
 	return nil
 }

@@ -78,6 +78,55 @@ func TestGetAnnotatedIngresses(t *testing.T) {
 	}
 }
 
+func TestGetOrphanedIngresses(t *testing.T) {
+	// list with more observed than desired
+	ingressList := newIngressList()
+	desired := GetAnnotatedIngresses(ingressList)
+	observed := desired
+	ai := aIngress()
+	expected := v1beta1.IngressList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Ingress",
+			APIVersion: "extensions/v1beta1",
+		},
+		Items: []v1beta1.Ingress{ai},
+	}
+	observed.Items = append(observed.Items, ai)
+	result := GetOrphanedIngresses(desired, observed)
+	if !reflect.DeepEqual(expected, result) {
+		t.Errorf("Expected:\n%+v\nGot:\n%+v\n", expected, result)
+	}
+
+	// equal lists
+	expected = v1beta1.IngressList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Ingress",
+			APIVersion: "extensions/v1beta1",
+		},
+	}
+	result = GetOrphanedIngresses(desired, desired)
+	if !reflect.DeepEqual(expected, result) {
+		t.Errorf("Expected:\n%v\nGot:\n%v\n", expected, result)
+	}
+
+	// list with more desired than observed
+	ingressList = newIngressList()
+	desired = GetAnnotatedIngresses(ingressList)
+	observed = desired
+	ai = aIngress()
+	expected = v1beta1.IngressList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Ingress",
+			APIVersion: "extensions/v1beta1",
+		},
+	}
+	desired.Items = append(desired.Items, ai)
+	result = GetOrphanedIngresses(desired, observed)
+	if !reflect.DeepEqual(expected, result) {
+		t.Errorf("Expected:\n%+v\nGot:\n%+v\n", expected, result)
+	}
+}
+
 func expectedIngressConfigs() []ingressConfig {
 	return []ingressConfig{
 		{
@@ -131,14 +180,14 @@ func expectedIngressConfigs() []ingressConfig {
 func newServiceList() corev1.ServiceList {
 	return corev1.ServiceList{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "ServiceList",
-			APIVersion: "core/v1",
+			Kind:       "Service",
+			APIVersion: "v1",
 		},
 		Items: []corev1.Service{
 			{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Service",
-					APIVersion: "core/v1",
+					APIVersion: "v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "prod",
@@ -159,7 +208,7 @@ func newServiceList() corev1.ServiceList {
 			{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Service",
-					APIVersion: "core/v1",
+					APIVersion: "v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "one",
@@ -180,7 +229,7 @@ func newServiceList() corev1.ServiceList {
 			{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Service",
-					APIVersion: "core/v1",
+					APIVersion: "v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "two",
@@ -201,7 +250,7 @@ func newServiceList() corev1.ServiceList {
 			{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Service",
-					APIVersion: "core/v1",
+					APIVersion: "v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "three",
@@ -222,7 +271,7 @@ func newServiceList() corev1.ServiceList {
 			{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Service",
-					APIVersion: "core/v1",
+					APIVersion: "v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "another",
@@ -244,14 +293,14 @@ func newServiceList() corev1.ServiceList {
 func expectedServiceList() corev1.ServiceList {
 	return corev1.ServiceList{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "ServiceList",
-			APIVersion: "core/v1",
+			Kind:       "Service",
+			APIVersion: "v1",
 		},
 		Items: []corev1.Service{
 			{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Service",
-					APIVersion: "core/v1",
+					APIVersion: "v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "prod",
@@ -272,7 +321,7 @@ func expectedServiceList() corev1.ServiceList {
 			{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Service",
-					APIVersion: "core/v1",
+					APIVersion: "v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "one",
@@ -293,7 +342,7 @@ func expectedServiceList() corev1.ServiceList {
 			{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Service",
-					APIVersion: "core/v1",
+					APIVersion: "v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "two",
@@ -314,7 +363,7 @@ func expectedServiceList() corev1.ServiceList {
 			{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Service",
-					APIVersion: "core/v1",
+					APIVersion: "v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "three",
@@ -340,7 +389,7 @@ func expectedIngressList() v1beta1.IngressList {
 	servicePort := intstr.FromInt(80)
 	return v1beta1.IngressList{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "IngressList",
+			Kind:       "Ingress",
 			APIVersion: "extensions/v1beta1",
 		},
 		Items: []v1beta1.Ingress{
@@ -441,7 +490,7 @@ func newIngressList() v1beta1.IngressList {
 	servicePort := intstr.FromInt(80)
 	return v1beta1.IngressList{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "IngressList",
+			Kind:       "Ingress",
 			APIVersion: "extensions/v1beta1",
 		},
 		Items: []v1beta1.Ingress{
@@ -557,6 +606,43 @@ func newIngressList() v1beta1.IngressList {
 												ServicePort: servicePort,
 											},
 										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func aIngress() v1beta1.Ingress {
+	servicePort := intstr.FromInt(80)
+	return v1beta1.Ingress{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Ingress",
+			APIVersion: "extensions/v1beta1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "a-ingress",
+			Namespace: "default",
+			Annotations: map[string]string{
+				ingressAnnotationKey: "true",
+			},
+		},
+		Spec: v1beta1.IngressSpec{
+			Rules: []v1beta1.IngressRule{
+				{
+					Host: "a-ingress.example.com",
+					IngressRuleValue: v1beta1.IngressRuleValue{
+						HTTP: &v1beta1.HTTPIngressRuleValue{
+							Paths: []v1beta1.HTTPIngressPath{
+								{
+									Path: "/*",
+									Backend: v1beta1.IngressBackend{
+										ServiceName: "web",
+										ServicePort: servicePort,
 									},
 								},
 							},

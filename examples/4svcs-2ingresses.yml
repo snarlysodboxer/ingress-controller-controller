@@ -1,0 +1,153 @@
+## Read the comments below
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+  namespace: default
+  labels:
+    name: my-service
+    icc-operator: "true"
+  annotations:
+    ingress-controller-controller.alpha.davidamick.com/config: |
+      name: primary-ingress
+      host: my-service.example.com
+      path: /*
+      service: my-service
+      port: 8080
+spec:
+  type: ClusterIP
+  selector:
+    name: my-service
+  ports:
+  - name: my-port
+    port: 8080
+    targetPort: my-port
+    protocol: TCP
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-other-service
+  namespace: default
+  labels:
+    name: my-other-service
+    icc-operator: "true"
+  annotations:
+    ingress-controller-controller.alpha.davidamick.com/config: |
+      name: secondary-ingress # Each unique name creates a separate Ingress
+      host: staging.my-service.example.com
+      path: /*
+      service: my-other-service
+      port: 8080
+spec:
+  type: ClusterIP
+  selector:
+    name: my-other-service
+  ports:
+  - name: my-port
+    port: 8080
+    targetPort: my-port
+    protocol: TCP
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-third-service
+  namespace: default
+  labels:
+    name: my-third-service
+    icc-operator: "true"
+  annotations:
+    ingress-controller-controller.alpha.davidamick.com/config: |
+      name: secondary-ingress
+      host: staging.another-service.example.com
+      path: /ui
+      service: my-third-service
+      port: 8080
+spec:
+  type: ClusterIP
+  selector:
+    name: my-third-service
+  ports:
+  - name: my-port
+    port: 8080
+    targetPort: my-port
+    protocol: TCP
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-fourth-service
+  namespace: default
+  labels:
+    name: my-fourth-service
+    icc-operator: "true"
+  annotations:
+    ingress-controller-controller.alpha.davidamick.com/config: |
+      name: secondary-ingress
+      host: staging.another-service.example.com # Services referencing the same host will have their paths merged
+      path: /api
+      service: my-fourth-service
+      port: 8080
+spec:
+  type: ClusterIP
+  selector:
+    name: my-fourth-service
+  ports:
+  - name: my-port
+    port: 8080
+    targetPort: my-port
+    protocol: TCP
+---
+
+###########################################################################################
+## The above `Service`s would cause the controller to create the following `Ingress`s:
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    ingress-controller-controller.alpha.davidamick.com/managed: "true"
+  name: primary-ingress
+  namespace: default
+spec:
+  rules:
+  - host: my-service.example.com
+    http:
+      paths:
+      - backend:
+          serviceName: my-service
+          servicePort: 8080
+        path: /*
+---
+
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    ingress-controller-controller.alpha.davidamick.com/managed: "true"
+  name: secondary-ingress
+  namespace: default
+spec:
+  rules:
+  - host: staging.my-service.example.com
+    http:
+      paths:
+      - backend:
+          serviceName: my-other-service
+          servicePort: 8080
+        path: /*
+  - host: staging.another-service.example.com
+    http:
+      paths:
+      - backend:
+          serviceName: my-fourth-service
+          servicePort: 8080
+        path: /api
+      - backend:
+          serviceName: my-third-service
+          servicePort: 8080
+        path: /ui
+
